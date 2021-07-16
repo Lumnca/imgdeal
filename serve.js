@@ -39,25 +39,7 @@ app.post("/profile", upload.single("file"), function (req, res, next) {
   res.end("上传成功!");
 });
 
-app.listen(3000);
+app.listen(3000, function () {
+  console.log("服务已启动请打开浏览器访问http://127.0.0.1:3000/")
+});
 
-const child_process = require('child_process');
-
-var openURL = function (url) {
-  // 判断平台
-  switch (process.platform) {
-    // Mac 使用open
-    case "darwin":
-      child_process.spawn('open', [url]);
-      break;
-    // Windows使用start
-    case "win32":
-      child_process.spawn('start', [url]);
-      break;
-    // Linux等使用xdg-open
-    default:
-      child_process.spawn('xdg-open', [url]);
-  }
-};
-
-openURL("http://127.0.0.1:3000/");
