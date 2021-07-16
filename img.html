@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>图片分块区</title>
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <!-- 引入样式 -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"
+    />
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+      .imgshow {
+        border: 1px dashed #aaa;
+        padding: 8px;
+      }
+      .avatar-uploader .el-upload {
+        border: 1px dashed #d9d9d9;
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+      .avatar-uploader .el-upload:hover {
+        border-color: #409eff;
+      }
+      .avatar-uploader-icon {
+        font-size: 28px;
+        color: #8c939d;
+        width: 178px;
+        height: 178px;
+        line-height: 178px;
+        text-align: center;
+      }
+      .avatar {
+        width: 178px;
+        height: 178px;
+        display: block;
+      }
+      .black {
+        padding: 8px;
+      }
+    </style>
+    <link rel="stylesheet" href="css/imgview.css" />
+  </head>
+  <body>
+    <div id="app">
+      <el-container>
+        <el-container>
+          <el-header>
+            <el-menu
+              :default-active="activeIndex"
+              class="el-menu-demo"
+              mode="horizontal"
+              text-color="#46c7dc"
+              background-color="#001529"
+              active-text-color="#46c7dc"
+            >
+               <el-menu-item index="1" @click="changeMethod(1)"
+                >图片分割器</el-menu-item
+              >
+              <el-menu-item index="2" @click="changeMethod(2)"
+                >图片分块器</el-menu-item
+              >
+              <el-menu-item index="3" @click="changeMethod(3)"
+                >图片转gif</el-menu-item
+              >
+            </el-menu>
+          </el-header>
+          <el-main>
+            <div style="text-align: center">
+              <el-upload
+                v-if="!showUploadImg"
+                name="file"
+                drag
+                multiple
+                class="avatar-uploader"
+                action="/profile"
+                :show-file-list="false"
+                :on-success="handleAvatarSuccess"
+                :before-upload="beforeAvatarUpload"
+              >
+                <i class="el-icon-upload"></i>
+                <div class="el-upload__text">
+                  将文件拖到此处，或<em>点击上传</em>
+                </div>
+                <div style="text-align: center" slot="tip">
+                  只能上传jpg/png文件，且不超过10MB
+                </div>
+              </el-upload>
+              <div id="mi"></div>
+              <div class="block imgshow" v-if="showUploadImg">
+                <div class="black">
+                  行数:
+                  <el-input-number
+                    v-model="rownum"
+                    @change="handleChange"
+                    :min="1"
+                    :max="99"
+                    label="描述文字"
+                    :disabled="rowcoldisabled"
+                  ></el-input-number
+                  >&nbsp;&nbsp;&nbsp; 列数:
+                  <el-input-number
+                    v-model="colnum"
+                    @change="handleChange"
+                    :min="1"
+                    :max="99"
+                    label="描述文字"
+                    :disabled="rowcoldisabled"
+                  ></el-input-number>
+                </div>
+                <div class="black">
+                  <el-button size="mini" @click="showLine">显示/隐藏分割线</el-button>
+                  <el-button size="mini" @click="reSelect">重新选块</el-button>
+                  <el-button size="mini" @click="download" :disabled="cand">下载选择图像</el-button>
+                </div>
+              </div>
+            </div>
+          </el-main>
+          <el-footer>使用说明:上传图片，选择行列进行分块，然后在图中用鼠标拖动选择区域然后下载即可</el-footer>
+        </el-container>
+      </el-container>
+    </div>
+  </body>
+  <script src="js/libs/pixi.js"></script>
+  <script src="tools/img.js"></script>
+  <script>
+    var sprite;
+    var line;
+    var app = new Vue({
+      el: "#app",
+      data() {
+        return {
+          imageUrl: "",
+          showUploadImg: false,
+          rownum: 1,
+          colnum: 1,
+          width: 0,
+          height: 0,
+          cur: -1,
+          curI: 0,
+          curJ: -1,
+          rowcoldisabled: false,
+          fileName: "",
+          activeIndex: "2",
+          cand : true
+        };
+      },
+      methods: {
+        showImg(src) {
+          sprite = new PIXI.Sprite(new PIXI.Texture.from(src));
+          app2.stage.addChild(sprite);
+          line = new PIXI.Graphics();
+          line.lineStyle(1, 0x555555, 0.7);
+          app2.stage.addChild(line);
+          sprite.interactive = true;
+          sprite.on("pointerdown", startClick);
+          sprite.on("pointerup", cancelMove);
+        },
+        handleAvatarSuccess(res, file) {
+          this.$message({
+            message: res,
+            type: "success",
+          });
+          this.imageUrl = "uploads/" + file.name;
+          this.fileName = file.name.split(".").shift();
+          this.showUploadImg = true;
+          this.showImg(this.imageUrl);
+        },
+        beforeAvatarUpload(file) {
+          const isJPG = file.type === "image/jpeg" || file.type === "image/png";
+          const isLt2M = file.size / 1024 / 1024 < 10;
+
+          if (!isJPG) {
+            this.$message.error("上传图片只能是 JPG / PNG 格式!");
+          }
+          if (!isLt2M) {
+            this.$message.error("上传图片大小不能超过 5MB!");
+          }
+          return isJPG && isLt2M;
+        },
+        showLine() {
+          line.visible = !line.visible;
+        },
+        handleChange() {
+          drawSplitLine(this.rownum, this.colnum);
+        },
+        reSelect() {
+          r1.clear();
+        },
+        next() {
+          this.rowcoldisabled = true;
+          this.cur++;
+          this.curJ++;
+          if (this.curJ >= this.colnum) {
+            this.curJ = 0;
+            this.curI++;
+          }
+          clip(this.curI, this.curJ);
+        },
+        restore() {
+          this.cur = -1;
+          this.curJ = -1;
+          this.curI = 0;
+          this.colnum = 0;
+          this.rownum = 0;
+          this.rowcoldisabled = false;
+          this.cand =  true;
+          line.clear();
+          let clipRect = new PIXI.Rectangle(
+            0,
+            0,
+            sprite.texture.baseTexture.width,
+            sprite.texture.baseTexture.height
+          );
+          sprite.texture.frame = clipRect;
+          sprite.x = 0;
+          sprite.y = 0;
+        },
+        download() {
+          downRectPhoto(this.fileName);
+        },
+        handleSelect(key, keyPath) {
+          console.log(key, keyPath);
+        }, changeMethod(m) {
+          if (m == "2") {
+            location.href = "img.html";
+          } else if (m == "3") {
+            location.href = "gif.html";
+          } else if (m == "1") {
+            location.href = "index.html";
+          }
+        },
+      },
+    });
+
+    const app2 = new PIXI.Application({
+      width: 960,
+      height: 600,
+      backgroundColor: 0x1099bb,
+      resolution: window.devicePixelRatio || 1,
+    });
+    document.getElementById("mi").appendChild(app2.view);
+    let i = 0,
+      j = 0;
+    function clip(i, j) {
+      let clipRect = new PIXI.Rectangle(
+        j * app.width,
+        i * app.height,
+        app.width,
+        app.height
+      );
+      sprite.texture.frame = clipRect;
+      sprite.x = j * app.width;
+      sprite.y = i * app.height;
+    }
+
+    function downRectPhoto(filename){
+      var t = sprite.texture.clone();
+      t.frame = new PIXI.Rectangle(y1*app.width,x1*app.height,y2*app.width - y1*app.width,x2*app.height-x1*app.height);
+      var sp = new PIXI.Sprite(t);
+      app2.renderer.extract.canvas(sp).toBlob((b) => {
+        const a = document.createElement("a");
+        document.body.append(a);
+        a.download = filename;
+        a.href = URL.createObjectURL(b);
+        a.click();
+        a.remove();
+      }, "image/png");
+    }
+    function takeScreenshot(filename) {
+      var t = sprite.texture.clone();
+      var sp = new PIXI.Sprite(t);
+      app2.renderer.extract.canvas(sp).toBlob((b) => {
+        const a = document.createElement("a");
+        document.body.append(a);
+        a.download = filename;
+        a.href = URL.createObjectURL(b);
+        a.click();
+        a.remove();
+      }, "image/png");
+    }
+
+    function drawSplitLine(row, col) {
+      line.clear();
+      line.beginFill();
+      let lineRow = sprite.height / row;
+      let lineCol = sprite.width / col;
+      app.width = lineCol;
+      app.height = lineRow;
+      for (let i = 0; i <= row; i++) {
+        line.drawRect(0, lineRow * i, sprite.width, 1);
+      }
+      for (let j = 0; j <= col; j++) {
+        line.drawRect(lineCol * j, 0, 1, sprite.height);
+      }
+      line.endFill();
+    }
+
+    let x1,x2,y1,y2,moveing = false;
+
+    function startClick(e) {
+      x1 = Math.floor(e.data.global.y / app.height);
+      y1 = Math.floor(e.data.global.x / app.width);
+      sprite.on("pointermove", mouseMove);
+      moveing = true;
+        app.cand =  true;
+    }
+
+    function mouseMove(e) {
+      let offx = Math.ceil(e.data.global.y / app.height);
+      let offy = Math.ceil(e.data.global.x / app.width);
+      x2 = offx >app.rownum? app.rownum : offx;
+      y2 = offy > app.colnum? app.colnum  : offy;
+      if(x1 > x2) {
+        let t = x2;
+        x2 = x1;
+        x1 = t;
+      }
+      if(y1 > y2){
+        let ty = y1;
+        y1 = y2;
+        y2 = ty;
+      }
+      if(moveing){
+        showSelectArea(y1*app.width,x1*app.height,y2*app.width - y1*app.width,x2*app.height-x1*app.height);
+      }
+    }
+
+    function cancelMove(e) {
+      sprite.off("pointermove", mouseMove);
+      app.cand = false;
+      moveing = false;
+    }
+    var r1 = new PIXI.Graphics()
+    r1.alpha = 0.4
+    app2.stage.addChild(r1)
+
+    function showSelectArea(x1,y1,x2,y2){
+      r1.clear();
+      r1.beginFill()
+      r1.drawRect(x1,y1,x2,y2);
+      r1.endFill()
+    }
+
+  </script>
+</html>

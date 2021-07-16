@@ -1,0 +1,16 @@
+{
+    "name": "",
+    "main": "index.html",
+    "js-flags": "--expose-gc",
+    "window": {
+        "title": "",
+        "toolbar": false,
+        "width": 816,
+        "height": 624,
+        "icon": "icon/icon.png"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "multer": "^1.4.2"
+    }
+}
