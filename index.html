@@ -131,6 +131,7 @@
                   <el-button size="mini" @click="download"
                     >下载当前显示图像</el-button
                   >
+                  <el-button size="mini" @click="downlaodAll">下载所有图像</el-button>
                 </div>
               </div>
             </div>
@@ -162,6 +163,7 @@
           rowcoldisabled: false,
           fileName: "",
           activeIndex: "1",
+          timed : -1
         };
       },
       methods: {
@@ -241,6 +243,16 @@
           const filename = this.fileName + "_" + (this.cur + 1);
           takeScreenshot(filename);
         },
+        downlaodAll(){
+          this.timed = setInterval(()=>{
+            this.next();
+            const filename = this.fileName + "_" + (this.cur + 1);
+            takeScreenshot(filename);
+            if(this.cur >= this.rownum * this.colnum){
+              clearInterval(this.timed);
+            }
+          },500);
+        },
         changeMethod(m) {
           if (m == "2") {
             location.href = "img.html";
@@ -256,7 +268,7 @@
 
     const app2 = new PIXI.Application({
       width: 960,
-      height: 600,
+      height: 640,
       backgroundColor: 0x1099bb,
       resolution: window.devicePixelRatio || 1,
     });
